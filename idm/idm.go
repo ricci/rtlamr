@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+	"os"
 
 	"github.com/bemasher/rtlamr/crc"
 	"github.com/bemasher/rtlamr/decode"
@@ -130,15 +131,23 @@ func NewIDM(data parse.Data) (idm IDM) {
 	idm.ModuleProgrammingState = data.Bytes[14]
 	idm.TamperCounters = data.Bytes[15:21]
 	idm.AsynchronousCounters = binary.BigEndian.Uint16(data.Bytes[21:23])
-	idm.PowerOutageFlags = data.Bytes[23:24]
-	idm.LastConsumptionCount = binary.BigEndian.Uint32(data.Bytes[24:28])
 
-	offset := 28*8
+        offset := 33 * 8
+	if idm.ERTType == 8 {
+            idm.PowerOutageFlags = data.Bytes[23:24]
+            idm.LastConsumptionCount = binary.BigEndian.Uint32(data.Bytes[24:28])
+            offset = 28*8
+        } else {
+            idm.PowerOutageFlags = data.Bytes[23:29]
+            idm.LastConsumptionCount = binary.BigEndian.Uint32(data.Bytes[29:33])
+        }
+
 	for idx := range idm.DifferentialConsumptionIntervals {
 		interval, _ := strconv.ParseUint(data.Bits[offset:offset+9], 2, 9)
 		idm.DifferentialConsumptionIntervals[idx] = uint16(interval)
 		offset += 9
 	}
+        os.Stderr.WriteString(fmt.Sprintf("%v\n",data.Bits[28*8:92*8]))
 
 	idm.TransmitTimeOffset = binary.BigEndian.Uint16(data.Bytes[86:88])
 	idm.SerialNumberCRC = binary.BigEndian.Uint16(data.Bytes[88:90])
