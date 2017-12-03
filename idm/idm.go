@@ -132,20 +132,25 @@ func NewIDM(data parse.Data) (idm IDM) {
 	idm.TamperCounters = data.Bytes[15:21]
 	idm.AsynchronousCounters = binary.BigEndian.Uint16(data.Bytes[21:23])
 
-        offset := 33 * 8
+        intervalOffset := 33
+        intervalSize := 9
 	if idm.ERTType == 8 {
             idm.PowerOutageFlags = data.Bytes[23:24]
             idm.LastConsumptionCount = binary.BigEndian.Uint32(data.Bytes[24:28])
-            offset = 28*8
+            intervalOffset = 39
+            intervalSize = 14
         } else {
             idm.PowerOutageFlags = data.Bytes[23:29]
             idm.LastConsumptionCount = binary.BigEndian.Uint32(data.Bytes[29:33])
         }
 
-	for idx := range idm.DifferentialConsumptionIntervals {
-		interval, _ := strconv.ParseUint(data.Bits[offset:offset+9], 2, 9)
+        numIntervals := ((86 - intervalOffset)*8) / intervalSize
+        os.Stderr.WriteString(fmt.Sprintf("intOffset %v, intSize %v, numi: %v\n",intervalOffset,intervalSize,numIntervals))
+        offset := intervalOffset * 8
+	for idx := 0; idx < numIntervals; idx++ {
+                interval, _ := strconv.ParseUint(data.Bits[offset:offset+intervalSize], 2, intervalSize)
 		idm.DifferentialConsumptionIntervals[idx] = uint16(interval)
-		offset += 9
+		offset += intervalSize
 	}
         os.Stderr.WriteString(fmt.Sprintf("%v\n",data.Bits[28*8:92*8]))
 
