@@ -137,7 +137,7 @@ func NewIDM(data parse.Data) (idm IDM) {
 	if idm.ERTType == 8 {
             idm.PowerOutageFlags = data.Bytes[23:24]
             idm.LastConsumptionCount = binary.BigEndian.Uint32(data.Bytes[24:28])
-            intervalOffset = 39
+            intervalOffset = 38
             intervalSize = 14
         } else {
             idm.PowerOutageFlags = data.Bytes[23:29]
