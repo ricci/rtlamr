@@ -134,25 +134,34 @@ func NewIDM(data parse.Data) (idm IDM) {
 
         intervalOffset := 33
         intervalSize := 9
+        hasNegatives := false
 	if idm.ERTType == 8 {
             idm.PowerOutageFlags = data.Bytes[23:24]
             idm.LastConsumptionCount = binary.BigEndian.Uint32(data.Bytes[24:28])
             intervalOffset = 38
             intervalSize = 14
+            hasNegatives = true
         } else {
             idm.PowerOutageFlags = data.Bytes[23:29]
             idm.LastConsumptionCount = binary.BigEndian.Uint32(data.Bytes[29:33])
         }
 
         numIntervals := ((86 - intervalOffset)*8) / intervalSize
-        os.Stderr.WriteString(fmt.Sprintf("intOffset %v, intSize %v, numi: %v\n",intervalOffset,intervalSize,numIntervals))
+        idm.DifferentialConsumptionIntervals = make([]int16,numIntervals)
         offset := intervalOffset * 8
 	for idx := 0; idx < numIntervals; idx++ {
-                interval, _ := strconv.ParseUint(data.Bits[offset:offset+intervalSize], 2, intervalSize)
-		idm.DifferentialConsumptionIntervals[idx] = uint16(interval)
+	        signBit := 0
+	        if hasNegatives {
+	            signBit = 1
+                }
+                interval, _ := strconv.ParseUint(data.Bits[offset + signBit:offset+intervalSize], 2, intervalSize - signBit)
+                if hasNegatives && data.Bits[offset] == 1 {
+                    interval = -interval
+                }
+		idm.DifferentialConsumptionIntervals[idx] = int16(interval)
 		offset += intervalSize
 	}
-        os.Stderr.WriteString(fmt.Sprintf("%v\n",data.Bits[28*8:92*8]))
+        os.Stderr.WriteString(fmt.Sprintf("%v\n",data.Bits[28*8:38*8]))
 
 	idm.TransmitTimeOffset = binary.BigEndian.Uint16(data.Bytes[86:88])
 	idm.SerialNumberCRC = binary.BigEndian.Uint16(data.Bytes[88:90])
@@ -161,7 +170,7 @@ func NewIDM(data parse.Data) (idm IDM) {
 	return
 }
 
-type Interval [47]uint16
+type Interval []int16
 
 func (interval Interval) Record() (r []string) {
 	for _, val := range interval {
